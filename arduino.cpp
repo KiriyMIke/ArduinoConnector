@@ -4,7 +4,7 @@
 
 #include "arduino.h"
 
-
+// FIXME: Improve error handling
 Arduino::Arduino(const QString &portName)
     : _serial(new QSerialPort(portName)),
       _requestForPeriod(new char[5] { 8, 0, 0, 0, 0 }),
@@ -19,7 +19,7 @@ Arduino::Arduino(const QString &portName)
 
     if (_serial->isOpen() && _serial->isWritable() && _serial->isReadable())
     {
-            std::cout << "Opened successfully!\n";
+        std::cout << "Opened successfully!\n";
     }
     else
     {
@@ -53,27 +53,34 @@ QString Arduino::identPort()
 
 uint32_t dataToUint32(QByteArray data)
 {
-return ((uint32_t)(uint8_t)data[0]) + (((uint32_t)(uint8_t)data[1]) << 8)
-+ (((uint32_t)(uint8_t)data[2]) << 16) + (((uint32_t)(uint8_t)data[3]) << 24);
+    return ((uint32_t)(uint8_t)data[0]) 
+        + (((uint32_t)(uint8_t)data[1]) << 8)
+        + (((uint32_t)(uint8_t)data[2]) << 16) 
+        + (((uint32_t)(uint8_t)data[3]) << 24);
 }
 
-void Arduino::read()
+void Arduino::readPeriodResponce()
 {
+    // FIXME: Wait for ready read + available bytes >= struct size
     std::cout << "kuku\n";
+    // TODO: Read to one buffer then split and map to one struct
     _answerCode = _serial->read(1);
     _periodRaw = _serial->read(4);
+
     _period = dataToUint32(_periodRaw);
 
-    std::cout << "Answer: " << _answerCode[0] + '0' - 48<< '\n';
-    std::cout << "Period = " << _period<< '\n';
+    // TODO: std::cout << "Answer: " << parsedStruct '\n';
+    std::cout << "Answer: " << _answerCode[0] + '0' - 48 << '\n';
+    std::cout << "Period = " << _period << '\n';
 }
 
 void Arduino::writeData(const QByteArray data) const
 {
     if (_serial->isOpen() && _serial->isWritable())
     {
-        std::cout << "Bytes send: " << _serial->write(data) << '\n';
-        //_serial->waitForBytesWritten(1000);
+        auto bytesSent = _serial->write(data);
+        std::cout << "Bytes send: " << bytesSent << std::endl;
+        _serial->waitForBytesWritten(_writeTimeout);
     }
     else
     {
@@ -81,9 +88,15 @@ void Arduino::writeData(const QByteArray data) const
     }
 }
 
-void Arduino::readPeriod() const
+void Arduino::sendPeriodRequest() const
 {
     writeData(QByteArray(_requestForPeriod, 5));
+}
+
+void Arduino::readPeriod() const
+{
+    sendPeriodRequest();
+    readPeriodResponce();
     // Теперь здесь мне надо вызвать функцию, которая распарсит данные, которые пришли в порт.
     // Как это сделать? Я же не знаю в данном моменте, считались ли уже данные или нет,
     // так как за чтение отвечает функция
@@ -91,6 +104,7 @@ void Arduino::readPeriod() const
 
 void Arduino::readData() const
 {
-    writeData(QByteArray(_requestForPeriod, 5));
+    sendPeriodRequest();
+    readPeriodResponce();
     // Та же проблема. Здесь должна будет вызвана уже другая функция, в отличие от предыдущего случая.
 }

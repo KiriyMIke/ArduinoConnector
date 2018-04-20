@@ -14,23 +14,27 @@ class Arduino : public QObject
 private:
     QSerialPort* _serial;
 
+    // TODO: Use one response buffer
     QByteArray _answerCode;
     QByteArray _periodRaw;
 
-    int _bytes;
+    int _writeTimeout = 1000;
 
+    // TODO: period struct
     uint32_t _period;
 
+    // TODO: Use QByteArray
     char *_requestForPeriod;
     char *_requestForData;
 
-
-
+    void sendPeriodRequest() const;
 
 public:
     explicit Arduino(const QString &portName);
 
     static QString identPort();
+
+    // TODO: Think, maybe it's private
     void writeData(QByteArray data) const;
 
 signals:
